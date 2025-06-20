@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="text-center mb-4">Dashboard</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Adicionar Nova Medição</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('main.dashboard') }}">
+                        {{ form.hidden_tag() }}
+                        <div class="form-group">
+                            {{ form.sistolica.label(class="form-control-label") }}
+                            {{ form.sistolica(class="form-control", placeholder="Ex: 120") }}
+                            {% if form.sistolica.errors %}
+                                {% for error in form.sistolica.errors %}
+                                    <div class="alert alert-danger mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.diastolica.label(class="form-control-label") }}
+                            {{ form.diastolica(class="form-control", placeholder="Ex: 80") }}
+                            {% if form.diastolica.errors %}
+                                {% for error in form.diastolica.errors %}
+                                    <div class="alert alert-danger mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.notas.label(class="form-control-label") }}
+                            {{ form.notas(class="form-control", rows="3", placeholder="Notas adicionais (opcional)") }}
+                            {% if form.notas.errors %}
+                                {% for error in form.notas.errors %}
+                                    <div class="alert alert-danger mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.remedios_tomados.label(class="form-control-label") }}
+                            {{ form.remedios_tomados(class="form-control", rows="3", placeholder="Remédios tomados (opcional)") }}
+                            {% if form.remedios_tomados.errors %}
+                                {% for error in form.remedios_tomados.errors %}
+                                    <div class="alert alert-danger mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="form-group text-center">
+                            {{ form.submit(class="btn btn-success") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Filtrar Medições</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="start_date">Data Inicial:</label>
+                        <input type="date" class="form-control" id="start_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="end_date">Data Final:</label>
+                        <input type="date" class="form-control" id="end_date">
+                    </div>
+                    <button class="btn btn-info btn-block" id="filter_medicoes_btn">Filtrar</button>
+                    <button class="btn btn-secondary btn-block mt-2" id="clear_filters_btn">Limpar Filtros</button>
+                    <hr>
+                    <p>Exportar Dados:</p>
+                    <a href="#" class="btn btn-sm btn-outline-primary" id="export_pdf_btn">PDF</a>
+                    <a href="#" class="btn btn-sm btn-outline-primary" id="export_csv_btn">CSV</a>
+                </div>
+            </div>
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Gráfico de Pressão</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="pressureChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Minhas Medições</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped table-hover" id="medicoes_table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Sistólica</th>
+                                <th>Diastólica</th>
+                                <th>Status</th>
+                                <th>Notas</th>
+                                <th>Remédios</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {# As medições serão carregadas aqui via JavaScript ou Flask no carregamento inicial #}
+                            {% for medicao in medicoes %}
+                            <tr>
+                                <td>{{ medicao.data_medicao.strftime("%d/%m/%Y %H:%M") }}</td>
+                                <td>{{ medicao.sistolica }}</td>
+                                <td>{{ medicao.diastolica }}</td>
+                                <td>
+                                    {% set status_class = 'badge-success' %}
+                                    {% if medicao.sistolica >= 140 or medicao.diastolica >= 90 %}
+                                        {% set status_text = 'Hipertensão Estágio 2' %}
+                                        {% set status_class = 'badge-danger' %}
+                                    {% elif medicao.sistolica >= 130 or medicao.diastolica >= 80 %}
+                                        {% set status_text = 'Hipertensão Estágio 1' %}
+                                        {% set status_class = 'badge-warning' %}
+                                    {% elif medicao.sistolica >= 120 and medicao.diastolica < 80 %}
+                                        {% set status_text = 'Elevada' %}
+                                        {% set status_class = 'badge-info' %}
+                                    {% else %}
+                                        {% set status_text = 'Normal' %}
+                                        {% set status_class = 'badge-success' %}
+                                    {% endif %}
+                                    <span class="badge {{ status_class }}">{{ status_text }}</span>
+                                </td>
+                                <td>{{ medicao.notas if medicao.notas else 'N/A' }}</td>
+                                <td>{{ medicao.remedios_tomados if medicao.remedios_tomados else 'N/A' }}</td>
+                                <td>
+                                    {# Adicione botões de editar/excluir aqui posteriormente #}
+                                    <button class="btn btn-sm btn-warning">Editar</button>
+                                    <button class="btn btn-sm btn-danger">Excluir</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- jsPDF library for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/jspdf-autotable@3.5.14/dist/jspdf.plugin.autotable.js"></script>
+<script>
+    // Inicialize jsPDF
+    const { jsPDF } = window.jspdf;
+    
+    // Dados iniciais passados do Flask
+    var initialLabels = JSON.parse('{{ labels | tojson }}');
+    var initialSistolicas = JSON.parse('{{ sistolicas | tojson }}');
+    var initialDiastolicas = JSON.parse('{{ diastolicas | tojson }}');
+
+    var ctx = document.getElementById('pressureChart').getContext('2d');
+    var pressureChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: initialLabels,
+            datasets: [{
+                label: 'Sistólica',
+                data: initialSistolicas,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }, {
+                label: 'Diastólica',
+                data: initialDiastolicas,
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+
+    // Variável global para armazenar os dados das medições atualmente exibidas (para exportação)
+    let currentMedicoesData = [];
+
+    // Função para buscar e atualizar as medições e o gráfico
+    function fetchAndRenderMedicoes(startDate, endDate) {
+        let url = "{{ url_for('main.get_medicoes') }}";
+        const params = new URLSearchParams();
+        if (startDate) {
+            params.append('start_date', startDate);
+        }
+        if (endDate) {
+            params.append('end_date', endDate);
+        }
+        url = url + '?' + params.toString();
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                currentMedicoesData = data; // Armazena os dados para exportação
+                // Atualiza a tabela
+                const tableBody = document.querySelector('#medicoes_table tbody');
+                tableBody.innerHTML = ''; // Limpa as linhas existentes
+                data.forEach(medicao => {
+                    const row = tableBody.insertRow();
+                    row.insertCell().textContent = medicao.data_medicao;
+                    row.insertCell().textContent = medicao.sistolica;
+                    row.insertCell().textContent = medicao.diastolica;
+                    
+                    // Lógica de status (copiada da rota get_medicoes)
+                    let statusText = "Normal";
+                    let statusClass = "badge-success";
+                    if (medicao.sistolica >= 140 || medicao.diastolica >= 90) {
+                        statusText = "Hipertensão Estágio 2";
+                        statusClass = "badge-danger";
+                    } else if (medicao.sistolica >= 130 || medicao.diastolica >= 80) {
+                        statusText = "Hipertensão Estágio 1";
+                        statusClass = "badge-warning";
+                    } else if (medicao.sistolica >= 120 && medicao.diastolica < 80) {
+                        statusText = "Elevada";
+                        statusClass = "badge-info";
+                    }
+                    const statusCell = row.insertCell();
+                    statusCell.innerHTML = `<span class="badge ${statusClass}">${statusText}</span>`;
+
+                    row.insertCell().textContent = medicao.notas || 'N/A';
+                    row.insertCell().textContent = medicao.remedios_tomados || 'N/A';
+                    // Adicione botões de ação se necessário
+                    row.insertCell().innerHTML = `
+                        <button class="btn btn-sm btn-warning">Editar</button>
+                        <button class="btn btn-sm btn-danger">Excluir</button>
+                    `;
+                });
+
+                // Atualiza o gráfico
+                pressureChart.data.labels = data.map(m => m.data_medicao);
+                pressureChart.data.datasets[0].data = data.map(m => m.sistolica);
+                pressureChart.data.datasets[1].data = data.map(m => m.diastolica);
+                pressureChart.update();
+            })
+            .catch(error => console.error('Erro ao buscar medições:', error));
+    }
+
+    // Carrega as medições iniciais ao carregar a página
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAndRenderMedicoes('', '');
+    });
+
+    // Event Listeners para os botões de filtro
+    document.getElementById('filter_medicoes_btn').addEventListener('click', function() {
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        fetchAndRenderMedicoes(startDate, endDate);
+    });
+
+    document.getElementById('clear_filters_btn').addEventListener('click', function() {
+        document.getElementById('start_date').value = '';
+        document.getElementById('end_date').value = '';
+        fetchAndRenderMedicoes('', ''); // Carrega todas as medições novamente
+    });
+
+    // Lógica para exportação CSV
+    document.getElementById('export_csv_btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (currentMedicoesData.length === 0) {
+            alert("Não há dados para exportar para CSV.");
+            return;
+        }
+
+        const headers = ["Data", "Sistólica", "Diastólica", "Status", "Notas", "Remédios"];
+        const rows = currentMedicoesData.map(medicao => {
+            let statusText = "Normal";
+            if (medicao.sistolica >= 140 || medicao.diastolica >= 90) {
+                statusText = "Hipertensão Estágio 2";
+            } else if (medicao.sistolica >= 130 || medicao.diastolica >= 80) {
+                statusText = "Hipertensão Estágio 1";
+            } else if (medicao.sistolica >= 120 && medicao.diastolica < 80) {
+                statusText = "Elevada";
+            }
+            return [
+                `"${medicao.data_medicao}"`,
+                medicao.sistolica,
+                medicao.diastolica,
+                `"${statusText}"`,
+                `"${(medicao.notas || 'N/A').replace(/"/g, '""')}"`, // Escapar aspas duplas
+                `"${(medicao.remedios_tomados || 'N/A').replace(/"/g, '""')}"` // Escapar aspas duplas
+            ];
+        });
+
+        let csvContent = headers.join(";") + "\n";
+        rows.forEach(row => {
+            csvContent += row.join(";") + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `medicoes_pressao_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        alert('Dados exportados para CSV com sucesso!');
+    });
+
+    // Lógica para exportação PDF
+    document.getElementById('export_pdf_btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (currentMedicoesData.length === 0) {
+            alert("Não há dados para exportar para PDF.");
+            return;
+        }
+
+        const doc = new jsPDF();
+        
+        doc.text("Relatório de Medições de Pressão", 14, 15);
+
+        const tableColumn = ["Data", "Sistólica", "Diastólica", "Status", "Notas", "Remédios"];
+        const tableRows = [];
+
+        currentMedicoesData.forEach(medicao => {
+            let statusText = "Normal";
+            if (medicao.sistolica >= 140 || medicao.diastolica >= 90) {
+                statusText = "Hipertensão Estágio 2";
+            } else if (medicao.sistolica >= 130 || medicao.diastolica >= 80) {
+                statusText = "Hipertensão Estágio 1";
+            } else if (medicao.sistolica >= 120 && medicao.diastolica < 80) {
+                statusText = "Elevada";
+            }
+            const medicaoData = [
+                medicao.data_medicao,
+                medicao.sistolica,
+                medicao.diastolica,
+                statusText,
+                medicao.notas || 'N/A',
+                medicao.remedios_tomados || 'N/A'
+            ];
+            tableRows.push(medicaoData);
+        });
+
+        doc.autoTable(tableColumn, tableRows, { startY: 20 });
+        doc.save(`relatorio_pressao_${new Date().toISOString().slice(0,10)}.pdf`);
+        alert('Dados exportados para PDF com sucesso!');
+    });
+
+</script>
+{% endblock scripts %}
+{% endblock content %}

@@ -1,0 +1,21 @@
+:root {
+    --background-color-light: #f8f9fa;
+    --text-color-light: #212529;
+    --card-bg-light: #ffffff;
+    --card-border-light: #dee2e6;
+    --input-bg-light: #ffffff;
+    --input-border-light: #ced4da;
+    --jumbotron-bg-light: #e9ecef;
+    --jumbotron-text-light: #495057;
+
+    --background-color-dark: #343a40;
+    --text-color-dark: #f8f9fa;
+    --card-bg-dark: #495057;
+    --card-border-dark: #6c757d;
+    --input-bg-dark: #6c757d;
+    --input-border-dark: #adb5bd;
+    --jumbotron-bg-dark: #212529;
+    --jumbotron-text-dark: #f8f9fa;
+
+--background-color: var(--background-color-light);
+}

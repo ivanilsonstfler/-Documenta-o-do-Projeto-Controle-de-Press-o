@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron text-center">
+    <h1 class="display-4">Bem-vindo ao Meu Controle de Pressão!</h1>
+    <p class="lead">Monitore e registre suas medições de pressão arterial de forma simples e eficiente.</p>
+    <hr class="my-4">
+    <p>Para começar, faça login ou crie sua conta.</p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}" role="button">Login</a>
+    <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.register') }}" role="button">Cadastre-se</a>
+</div>
+{% endblock content %}
+
+{# Se você adicionar scripts específicos para index.html, use este bloco #}
+{% block scripts %}
+    {% endblock scripts %}
